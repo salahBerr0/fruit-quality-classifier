@@ -206,25 +206,30 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-
+# Model files
 *.keras
 *.h5
 *.pkl
 *.joblib
-resized_images/
-__pycache__/
-*.pyc
-.DS_Store
-temp_upload.*
 
-# Large image folders (add these lines)
-*/resized_images/
-**/resized_images/
+# Images - but keep READMEs
+resized_images/*
+!resized_images/README.md
+!resized_images/.gitkeep
 
-# Individual images - but allow docs images
+# Individual image files everywhere
 *.jpg
 *.jpeg
 *.png
 *.gif
+
+# But allow documentation images
 !docs/*.png
 !docs/*.jpg
+!docs/*.jpeg
+
+# Python cache
+__pycache__/
+*.pyc
+.DS_Store
+temp_upload.*
