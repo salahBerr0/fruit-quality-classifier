@@ -216,3 +216,15 @@ __pycache__/
 *.pyc
 .DS_Store
 temp_upload.*
+
+# Large image folders (add these lines)
+*/resized_images/
+**/resized_images/
+
+# Individual images - but allow docs images
+*.jpg
+*.jpeg
+*.png
+*.gif
+!docs/*.png
+!docs/*.jpg
