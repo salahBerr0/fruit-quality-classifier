@@ -226,7 +226,10 @@ resized_images/*
 *.jpeg
 *.png
 *.gif
-
+!external_images/*.jpg
+!external_images/*.jpeg
+!external_images/*.png
+!external_images/*.gif
 # But allow documentation images
 !docs/*.png
 !docs/*.jpg
