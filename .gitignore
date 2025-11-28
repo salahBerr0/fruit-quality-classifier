@@ -206,12 +206,16 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Model files
+# Model files - but allow files in models/ folder
 *.keras
 *.h5
 *.pkl
 *.joblib
 
+# Allow model files in the models directory
+!models/*.keras
+!models/*.h5
+!models/*.joblib
 # Images - but keep READMEs
 resized_images/*
 !resized_images/README.md
