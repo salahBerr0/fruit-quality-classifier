@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ImageUploader } from "./components/ImageUploader";
-import { ResultDisplay } from "./components/ResultDisplay";
-import { ErrorMessage } from "./components/ErrorMessage";
 import { ClassificationResponse } from "@/types";
 import { Button } from "@/components/ui/button";
+import { ImageUploader } from "@/components/ImageUploader";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ResultDisplay } from "@/components/ResultDisplay";
 
 export default function Home() {
   const [result, setResult] = useState<ClassificationResponse | null>(null);
