@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { Upload, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { resizeImage, validateImageFile } from "@/lib/imageProcessor";
 
 interface ImageUploaderProps {
@@ -61,11 +60,11 @@ export function ImageUploader({
 
   return (
     <div
-      className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+      className={`relative border-4 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
         isDragging
-          ? "border-blue-500 bg-blue-50"
-          : "border-gray-300 hover:border-gray-400"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          ? "border-green-500 bg-green-50 scale-105"
+          : "border-orange-300 hover:border-orange-400 hover:bg-orange-50/30"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer group"}`}
       onDragOver={(e) => {
         e.preventDefault();
         if (!disabled && !isProcessing) setIsDragging(true);
@@ -86,18 +85,28 @@ export function ImageUploader({
       />
 
       {isProcessing ? (
-        <div className='flex flex-col items-center gap-2'>
-          <Loader2 className='h-12 w-12 animate-spin text-blue-500' />
-          <p className='text-sm text-gray-600'>Processing image...</p>
+        <div className='flex flex-col items-center gap-4'>
+          <Loader2 className='h-20 w-20 animate-spin text-orange-500' />
+          <p className='text-lg text-gray-600'>Processing image...</p>
         </div>
       ) : (
-        <div className='flex flex-col items-center gap-2'>
-          <Upload className='h-12 w-12 text-gray-400' />
-          <p className='text-lg font-medium'>Drop an image here</p>
-          <p className='text-sm text-gray-500'>or click to browse</p>
-          <p className='text-xs text-gray-400 mt-2'>
-            Supports: JPEG, PNG (max 10MB)
-          </p>
+        <div className='flex flex-col items-center gap-4'>
+          <div className='relative'>
+            <div className='absolute inset-0 bg-gradient-to-r from-green-400 to-orange-400 rounded-full blur-xl opacity-50 group-hover:opacity-75 transition-opacity'></div>
+            <Upload className='relative h-20 w-20 text-orange-500 group-hover:scale-110 transition-transform' />
+          </div>
+          <div className='space-y-2'>
+            <p className='text-2xl font-bold text-gray-800'>
+              Drop your fruit image here
+            </p>
+            <p className='text-lg text-gray-600'>or click to browse</p>
+            <div className='flex gap-2 justify-center text-3xl mt-4'>
+              🍎 🍊 🍌 🍇 🍓 🍑
+            </div>
+            <p className='text-sm text-gray-500 mt-4'>
+              Supports: JPEG, PNG (max 10MB)
+            </p>
+          </div>
         </div>
       )}
     </div>

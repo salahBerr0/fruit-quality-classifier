@@ -1,5 +1,4 @@
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, XCircle } from "lucide-react";
 
 interface ErrorMessageProps {
   error: string;
@@ -8,20 +7,22 @@ interface ErrorMessageProps {
 
 export function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
   return (
-    <Alert variant='destructive'>
-      <AlertCircle className='h-4 w-4' />
-      <AlertTitle>Error</AlertTitle>
-      <AlertDescription className='flex items-center justify-between'>
-        <span>{error}</span>
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            className='ml-4 px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-800 rounded'
-          >
-            Retry
-          </button>
-        )}
-      </AlertDescription>
-    </Alert>
+    <div className='bg-red-100 border-4 border-red-400 rounded-2xl p-6 flex items-center gap-4'>
+      <XCircle className='h-8 w-8 text-red-600 flex-shrink-0' />
+      <div className='flex-1'>
+        <p className='font-bold text-red-800 text-lg'>
+          Oops! Something went wrong
+        </p>
+        <p className='text-red-600'>{error}</p>
+      </div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className='bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors'
+        >
+          Try Again
+        </button>
+      )}
+    </div>
   );
 }

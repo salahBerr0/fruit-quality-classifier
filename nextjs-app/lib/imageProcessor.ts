@@ -5,8 +5,8 @@ export interface ImageConfig {
 }
 
 export const DEFAULT_IMAGE_CONFIG: ImageConfig = {
-  width: 224, // Common ML model input size
-  height: 224,
+  width: 128,
+  height: 128,
   quality: 0.9,
 };
 

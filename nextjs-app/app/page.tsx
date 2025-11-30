@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { ClassificationResponse } from "@/types";
-import { Button } from "@/components/ui/button";
-import { ImageUploader } from "@/components/ImageUploader";
-import { ErrorMessage } from "@/components/ErrorMessage";
-import { ResultDisplay } from "@/components/ResultDisplay";
+import { Header } from "@/components/Header";
+import { UploadSection } from "@/components/UploadSection";
+import { ResultSection } from "@/components/ResultSection";
+import { InfoSection } from "@/components/InfoSection";
+import { Footer } from "@/components/Footer";
 
 export default function Home() {
   const [result, setResult] = useState<ClassificationResponse | null>(null);
@@ -52,64 +53,45 @@ export default function Home() {
     setIsClassifying(false);
   };
 
-  const handleRetry = () => {
-    if (currentImage) {
-      handleImageProcessed(currentImage, new File([], "retry"));
-    }
-  };
-
   return (
-    <main className='min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4'>
-      <div className='max-w-4xl mx-auto space-y-8'>
-        {/* Header */}
-        <div className='text-center space-y-2'>
-          <h1 className='text-4xl font-bold text-gray-900'>
-            Fruit Quality Classifier
-          </h1>
-          <p className='text-gray-600'>
-            Upload an image to check if your fruit is good or bad
-          </p>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col'>
+      <Header />
+
+      <main className='flex-1 max-w-7xl mx-auto px-6 py-12 w-full'>
+        {!currentImage && (
+          <div className='text-center mb-12'>
+            <h2 className='text-4xl font-bold text-slate-900 mb-4'>
+              AI-Powered Quality Assessment
+            </h2>
+            <p className='text-lg text-slate-600 max-w-2xl mx-auto'>
+              Upload an image for instant quality analysis using advanced
+              machine learning technology
+            </p>
+          </div>
+        )}
+
+        <div className='grid lg:grid-cols-2 gap-8 mb-12'>
+          <UploadSection
+            onImageProcessed={handleImageProcessed}
+            onError={setError}
+            preview={currentImage}
+            isProcessing={isClassifying}
+            onReset={handleReset}
+          />
+
+          <ResultSection
+            result={result}
+            isClassifying={isClassifying}
+            error={error}
+            preview={currentImage}
+            onReset={handleReset}
+          />
         </div>
 
-        {/* Main Content */}
-        <div className='bg-white rounded-xl shadow-lg p-8 space-y-6'>
-          {!result && !isClassifying && (
-            <ImageUploader
-              onImageProcessed={handleImageProcessed}
-              onError={setError}
-              disabled={isClassifying}
-            />
-          )}
+        <InfoSection />
+      </main>
 
-          {isClassifying && (
-            <div className='flex flex-col items-center gap-4 py-12'>
-              <div className='animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600'></div>
-              <p className='text-lg text-gray-600'>Classifying your fruit...</p>
-            </div>
-          )}
-
-          {error && (
-            <ErrorMessage
-              error={error}
-              onRetry={currentImage ? handleRetry : undefined}
-            />
-          )}
-
-          {result && currentImage && (
-            <div className='space-y-4'>
-              <ResultDisplay result={result} imageUrl={currentImage} />
-              <Button onClick={handleReset} className='w-full'>
-                Classify Another Fruit
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Info Section */}
-        <div className='text-center text-sm text-gray-500'>
-          <p>Powered by machine learning • Fast and accurate classification</p>
-        </div>
-      </div>
-    </main>
+      <Footer />
+    </div>
   );
 }
