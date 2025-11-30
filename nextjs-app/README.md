@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fruit Quality Classifier
 
-## Getting Started
+A Next.js web application that classifies fruits as Good or Bad using machine learning.
 
-First, run the development server:
+## Features
+
+- 🖼️ Image upload with drag-and-drop
+- 🔄 Automatic image resizing to ML model requirements
+- ⚡ Real-time classification results
+- 🛡️ Comprehensive error handling
+- 📱 Responsive design
+
+## Setup
+
+1. Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+   npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Configure environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+   NEXT_PUBLIC_ML_SERVICE_URL=http://your-ml-service-url
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Run development server:
 
-## Learn More
+```bash
+   npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Frontend**: Next.js 15 + React + Tailwind CSS + shadcn/ui
+- **Backend**: Next.js API Routes
+- **ML Service**: External Python service (separate deployment)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Endpoints
 
-## Deploy on Vercel
+### POST `/api/classify`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Classifies a fruit image.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Request:**
+
+```json
+{
+  "image": "base64-encoded-image"
+}
+```
+
+**Response:**
+
+```json
+{
+  "result": "Good" | "Bad",
+  "confidence": 0.95,
+  "processingTime": 1.23
+}
+```
+
+## Error Handling
+
+- Image validation (type, size)
+- Network errors
+- Timeout handling
+- ML service errors
+- Invalid responses
