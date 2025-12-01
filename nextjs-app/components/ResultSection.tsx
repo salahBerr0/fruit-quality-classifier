@@ -124,9 +124,11 @@ export function ResultSection({
               Processing Time
             </p>
             <p className='text-2xl font-bold text-slate-900'>
-              {result.processingTime?.toFixed(2)}s
+              {result.processing_time.toFixed(2)}s
             </p>
-            <p className='text-xs text-slate-500 mt-2'>Model: v2.1.0</p>
+            {result.demo_mode && (
+              <p className='text-xs text-amber-600 mt-2'>⚠️ Demo Mode</p>
+            )}
           </div>
         </div>
 

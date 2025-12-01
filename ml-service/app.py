@@ -9,6 +9,8 @@ from PIL import Image
 import numpy as np
 import tensorflow as tf
 from typing import Tuple
+import json
+import traceback
 
 # Initialize FastAPI
 app = FastAPI(
@@ -17,119 +19,135 @@ app = FastAPI(
     description="AI-powered fruit quality classification service powered by Hugging Face"
 )
 
-# CORS middleware - Allow all origins for HF Spaces
+# CORS middleware (HF Spaces needs this)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # HF Spaces needs this
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Model configuration
-MODEL_PATH = os.getenv("MODEL_PATH", "./model/fruit_classifier.h5")
-IMAGE_SIZE = 128
-CLASS_NAMES = ["Bad", "Good"]
+# ==============================
+# MODEL CONFIGURATION
+# ==============================
 
-# Global model variable
+MODEL_PATH = os.getenv("MODEL_PATH", "./models/model_final.keras")
+CLASS_INDICES_PATH = "./models/class_indices.json"
+IMAGE_SIZE = 128
+
+# Load class indices (Good/Bad)
+if os.path.exists(CLASS_INDICES_PATH):
+    with open(CLASS_INDICES_PATH, "r") as f:
+        CLASS_NAMES = json.load(f)
+    print(f"✓ Class names loaded: {CLASS_NAMES}")
+else:
+    CLASS_NAMES = {"0": "Bad", "1": "Good"}  # Default mapping
+    print(f"⚠ Using default class names: {CLASS_NAMES}")
+
 model = None
 
+
 def load_model():
-    """Load the trained Keras model"""
+    """Load the trained Keras model from /models/."""
     global model
     try:
         if os.path.exists(MODEL_PATH):
             model = tf.keras.models.load_model(MODEL_PATH)
-            print(f"✓ Model loaded successfully from {MODEL_PATH}")
-            print(f"✓ Model input shape: {model.input_shape}")
-            print(f"✓ Model output shape: {model.output_shape}")
+            print(f"✓ Model loaded from {MODEL_PATH}")
+            print(f"✓ Input: {model.input_shape}, Output: {model.output_shape}")
             return True
         else:
-            print(f"⚠ Model file not found at {MODEL_PATH}")
-            print(f"⚠ Running in demo mode without actual model")
+            print(f"⚠ Model not found at {MODEL_PATH}. Running in demo mode.")
             model = None
             return False
+
     except Exception as e:
-        print(f"✗ Error loading model: {str(e)}")
+        print(f"✗ Failed to load model: {str(e)}")
+        traceback.print_exc()
         model = None
         return False
 
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize model on application startup"""
     success = load_model()
     if success:
-        print("🚀 Model loaded successfully - Ready for predictions!")
+        print("🚀 Model ready!")
     else:
-        print("⚠️  Running in demo mode - Upload your model to enable predictions")
+        print("⚠️ Running in demo mode. Upload the model to enable predictions.")
+
+
+# ==============================
+# IMAGE PROCESSING
+# ==============================
 
 def preprocess_image(image: Image.Image) -> np.ndarray:
-    """
-    Preprocess image for Keras model input
-    Resize to 128x128 as expected by the model
-    """
+    """Preprocess image to 128x128 RGB normalized array."""
     try:
         # Resize to 128x128
         image = image.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
+
+        # Convert to RGB
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Normalize to [0, 1]
+        arr = np.array(image, dtype=np.float32) / 255.0
         
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+        # Add batch dimension
+        arr = np.expand_dims(arr, axis=0)
         
-        # Convert to numpy array
-        img_array = np.array(image, dtype=np.float32)
+        print(f"✓ Preprocessed image shape: {arr.shape}")
+        return arr
         
-        # Normalize pixel values to [0, 1]
-        img_array = img_array / 255.0
-        
-        # Add batch dimension: (128, 128, 3) -> (1, 128, 128, 3)
-        img_array = np.expand_dims(img_array, axis=0)
-        
-        return img_array
-    
     except Exception as e:
+        print(f"✗ Preprocessing error: {str(e)}")
         raise ValueError(f"Image preprocessing failed: {str(e)}")
 
+
 def predict_quality(image_array: np.ndarray) -> Tuple[str, float]:
-    """
-    Make prediction using the loaded Keras model
-    Returns: (result, confidence)
-    """
+    """Make prediction using the model."""
     if model is None:
-        # Demo mode - return random prediction
+        # Demo mode - random prediction
         import random
         confidence = random.uniform(0.75, 0.99)
-        result = "Good" if random.random() > 0.5 else "Bad"
+        result = random.choice(["Bad", "Good"])
+        print(f"⚠ Demo mode: {result} ({confidence:.2%})")
         return result, confidence
-    
-    try:
-        # Get model prediction
-        prediction = model.predict(image_array, verbose=0)
-        
-        # Handle different model output formats
-        if prediction.shape[-1] == 1:
-            # Binary classification with single output (sigmoid)
-            confidence = float(prediction[0][0])
-            result = "Good" if confidence > 0.5 else "Bad"
-        elif prediction.shape[-1] == 2:
-            # Binary classification with two outputs (softmax)
-            confidence = float(np.max(prediction[0]))
-            class_idx = int(np.argmax(prediction[0]))
-            result = CLASS_NAMES[class_idx]
-        else:
-            raise ValueError(f"Unexpected model output shape: {prediction.shape}")
-        
-        # Ensure confidence is between 0 and 1
-        confidence = max(0.0, min(1.0, confidence))
-        
-        return result, confidence
-    
-    except Exception as e:
-        raise RuntimeError(f"Model prediction failed: {str(e)}")
 
-# Pydantic models
+    try:
+        preds = model.predict(image_array, verbose=0)
+        print(f"✓ Model prediction shape: {preds.shape}, values: {preds}")
+
+        if preds.shape[-1] == 1:
+            # Binary classification with sigmoid
+            prob = float(preds[0][0])
+            result = "Good" if prob > 0.5 else "Bad"
+            confidence = prob if result == "Good" else 1 - prob
+
+        else:
+            # Multi-class with softmax (2 outputs)
+            class_idx = int(np.argmax(preds[0]))
+            result = CLASS_NAMES[str(class_idx)]
+            confidence = float(preds[0][class_idx])
+
+        print(f"✓ Prediction: {result} ({confidence:.2%})")
+        return result, confidence
+
+    except Exception as e:
+        print(f"✗ Prediction error: {str(e)}")
+        traceback.print_exc()
+        raise RuntimeError(f"Prediction failed: {str(e)}")
+
+
+# ==============================
+# API MODELS
+# ==============================
+
 class ImageRequest(BaseModel):
-    image: str  # Base64 encoded image
+    image: str  # Base64 string
+
 
 class PredictionResponse(BaseModel):
     result: str
@@ -137,153 +155,160 @@ class PredictionResponse(BaseModel):
     processing_time: float
     demo_mode: bool = False
 
+
+# ==============================
+# ROUTES
+# ==============================
+
 @app.get("/")
 async def root():
-    """Root endpoint with service information"""
     return {
         "message": "🍎 Fruit Quality Classifier API",
         "status": "online",
-        "version": "1.0.0",
         "model_loaded": model is not None,
-        "expected_input_size": f"{IMAGE_SIZE}x{IMAGE_SIZE}",
+        "expected_input": f"{IMAGE_SIZE}x{IMAGE_SIZE}",
+        "class_names": CLASS_NAMES,
         "endpoints": {
-            "health": "/health",
-            "model_info": "/model-info",
             "predict": "/predict (POST)",
             "predict_file": "/predict-file (POST)",
+            "health": "/health (GET)",
             "docs": "/docs"
-        },
-        "powered_by": "Hugging Face Spaces"
+        }
     }
+
 
 @app.get("/health")
 async def health():
-    """Detailed health check"""
     return {
         "status": "healthy",
         "model_loaded": model is not None,
         "model_path": MODEL_PATH,
-        "expected_input_size": IMAGE_SIZE,
+        "image_size": IMAGE_SIZE,
         "tensorflow_version": tf.__version__,
-        "demo_mode": model is None,
         "timestamp": time.time()
     }
 
-@app.get("/model-info")
-async def model_info():
-    """Get model information"""
-    if model is None:
-        return {
-            "status": "demo_mode",
-            "message": "No model loaded - running in demo mode",
-            "instructions": "Upload fruit_classifier.h5 to enable real predictions"
-        }
-    
-    return {
-        "input_shape": str(model.input_shape),
-        "output_shape": str(model.output_shape),
-        "layers": len(model.layers),
-        "parameters": model.count_params(),
-        "class_names": CLASS_NAMES
-    }
 
 @app.post("/predict", response_model=PredictionResponse)
-async def classify_fruit(request: ImageRequest):
-    """
-    Classify fruit quality from base64 encoded image
-    Expected input: 128x128 RGB image
-    """
-    start_time = time.time()
+async def predict_base64(request: ImageRequest):
+    """Predict from base64 encoded image."""
+    start = time.time()
     
+    print(f"\n{'='*50}")
+    print(f"New prediction request received")
+    print(f"{'='*50}")
+
     try:
-        # Decode base64 image
+        # Log incoming data info
+        image_data = request.image
+        print(f"✓ Received base64 string length: {len(image_data)}")
+        
+        # Check if it has data URI prefix and remove it
+        if image_data.startswith('data:image'):
+            print("✓ Removing data URI prefix...")
+            # Split by comma and take the base64 part
+            image_data = image_data.split(',', 1)[1]
+            print(f"✓ Base64 length after prefix removal: {len(image_data)}")
+        
+        # Decode base64
         try:
-            image_data = base64.b64decode(request.image)
-            image = Image.open(io.BytesIO(image_data))
+            img_bytes = base64.b64decode(image_data)
+            print(f"✓ Decoded to {len(img_bytes)} bytes")
         except Exception as e:
+            print(f"✗ Base64 decode error: {str(e)}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid base64 encoding: {str(e)}"
+            )
+        
+        # Open image
+        try:
+            image = Image.open(io.BytesIO(img_bytes))
+            print(f"✓ Opened image: size={image.size}, mode={image.mode}")
+        except Exception as e:
+            print(f"✗ Image open error: {str(e)}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid image data: {str(e)}"
             )
         
-        # Validate image
-        if image.size[0] == 0 or image.size[1] == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Image has invalid dimensions"
-            )
+        # Preprocess
+        img_array = preprocess_image(image)
         
-        # Preprocess image
-        try:
-            processed_image = preprocess_image(image)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=str(e)
-            )
+        # Predict
+        result, confidence = predict_quality(img_array)
         
-        # Make prediction
-        try:
-            result, confidence = predict_quality(processed_image)
-        except RuntimeError as e:
-            raise HTTPException(
-                status_code=500,
-                detail=str(e)
-            )
-        
-        processing_time = time.time() - start_time
-        
+        processing_time = time.time() - start
+        print(f"✓ Total processing time: {processing_time:.3f}s")
+        print(f"{'='*50}\n")
+
         return PredictionResponse(
             result=result,
             confidence=confidence,
             processing_time=processing_time,
-            demo_mode=(model is None)
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected error: {str(e)}"
+            demo_mode=(model is None),
         )
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Unexpected error: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
 @app.post("/predict-file", response_model=PredictionResponse)
-async def classify_fruit_file(file: UploadFile = File(...)):
-    """
-    Alternative endpoint that accepts direct file upload
-    """
-    start_time = time.time()
+async def predict_file(file: UploadFile = File(...)):
+    """Predict from uploaded file."""
+    start = time.time()
     
+    print(f"\n{'='*50}")
+    print(f"File upload prediction request")
+    print(f"{'='*50}")
+    
+    # Validate content type
+    if not file.content_type.startswith("image/"):
+        print(f"✗ Invalid content type: {file.content_type}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"File must be an image, got: {file.content_type}"
+        )
+
     try:
-        # Validate file type
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(
-                status_code=400,
-                detail="File must be an image"
-            )
-        
-        # Read and process image
+        # Read file
         contents = await file.read()
+        print(f"✓ Read {len(contents)} bytes from file: {file.filename}")
+        
+        # Open image
         image = Image.open(io.BytesIO(contents))
+        print(f"✓ Opened image: size={image.size}, mode={image.mode}")
         
-        # Preprocess and predict
-        processed_image = preprocess_image(image)
-        result, confidence = predict_quality(processed_image)
+        # Preprocess
+        img_array = preprocess_image(image)
         
-        processing_time = time.time() - start_time
+        # Predict
+        result, confidence = predict_quality(img_array)
         
+        processing_time = time.time() - start
+        print(f"✓ Total processing time: {processing_time:.3f}s")
+        print(f"{'='*50}\n")
+
         return PredictionResponse(
             result=result,
             confidence=confidence,
             processing_time=processing_time,
-            demo_mode=(model is None)
+            demo_mode=(model is None),
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:
+        print(f"✗ Unexpected error: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing file: {str(e)}"
+            detail=f"Internal server error: {str(e)}"
         )
