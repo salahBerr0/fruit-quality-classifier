@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libhdf5-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -18,12 +18,8 @@ COPY . .
 # Create model directory
 RUN mkdir -p model
 
-# Expose port
-EXPOSE 8000
+# Expose port 7860 (HF Spaces default)
+EXPOSE 7860
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
-
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI with uvicorn on port 7860
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
