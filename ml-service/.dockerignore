@@ -1,0 +1,48 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Cache
+.cache/
+.ipynb_checkpoints/
+hf_cache/
+transformers_cache/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Model artifacts (optional)
+# Ignore all models EXCEPT final keras + class indices
+models/*
+!models/model_final.keras
+!models/class_indices.json
+
+# Not needed in production
+data/
+notebooks/
+external_images/
+resized_images/
+docs/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
