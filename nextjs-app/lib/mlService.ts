@@ -18,29 +18,51 @@ export class MLServiceClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
+      // Remove data URI prefix if present
+      let base64Data = imageBase64;
+      if (imageBase64.includes(",")) {
+        base64Data = imageBase64.split(",")[1];
+      }
+
+      console.log("Sending prediction request to:", this.baseUrl);
+      console.log("Base64 data length:", base64Data.length);
+
       const response = await fetch(`${this.baseUrl}/predict`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          image: imageBase64.split(",")[1], // Remove data:image/jpeg;base64, prefix
+          image: base64Data,
         }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error("API Error:", errorData);
         throw new MLServiceError(
-          errorData.message || `ML service error: ${response.status}`,
+          errorData.detail ||
+            errorData.message ||
+            `ML service error: ${response.status}`,
           `HTTP_${response.status}`
         );
       }
 
       const data = await response.json();
-      return this.parseMLResponse(data);
+      console.log("Prediction result:", data);
+
+      // Return data as-is, matching Python response format
+      return {
+        result: data.result,
+        confidence: data.confidence,
+        processing_time: data.processing_time,
+        demo_mode: data.demo_mode,
+      };
     } catch (error) {
       clearTimeout(timeoutId);
 
@@ -54,7 +76,7 @@ export class MLServiceClient {
 
         if (error.message.includes("fetch")) {
           throw new MLServiceError(
-            "Cannot connect to ML service",
+            "Cannot connect to ML service. Please check if the service is running.",
             "CONNECTION_ERROR"
           );
         }
@@ -62,22 +84,6 @@ export class MLServiceClient {
 
       throw error;
     }
-  }
-
-  private parseMLResponse(data: any): ClassificationResponse {
-    // Adjust this based on your actual ML API response format
-    if (!data.result || !["Good", "Bad"].includes(data.result)) {
-      throw new MLServiceError(
-        "Invalid response from ML service",
-        "INVALID_RESPONSE"
-      );
-    }
-
-    return {
-      result: data.result,
-      confidence: data.confidence || 0,
-      processingTime: data.processing_time,
-    };
   }
 }
 
