@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ClassificationResponse } from "@/types";
 import { Header } from "@/components/Header";
-import { UploadSection } from "@/components/UploadSection";
+import { UploadSection } from "@/components/ImageUploader";
 import { ResultSection } from "@/components/ResultSection";
 import { InfoSection } from "@/components/InfoSection";
 import { Footer } from "@/components/Footer";
@@ -12,16 +12,23 @@ export default function Home() {
   const [result, setResult] = useState<ClassificationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isClassifying, setIsClassifying] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null); // Original preview
+  const [resizedImage, setResizedImage] = useState<string | null>(null); // Resized for API
 
   const handleImageProcessed = async (
-    base64Image: string,
+    base64Resized: string,
     originalFile: File
   ) => {
     setError(null);
     setResult(null);
-    setCurrentImage(base64Image);
     setIsClassifying(true);
+
+    // Create preview URL from original file (not resized)
+    const originalPreview = URL.createObjectURL(originalFile);
+    setPreviewImage(originalPreview);
+
+    // Store resized image for API
+    setResizedImage(base64Resized);
 
     try {
       const response = await fetch("/api/classify", {
@@ -29,7 +36,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ image: base64Image }),
+        body: JSON.stringify({ image: base64Resized }), // Send resized image
       });
 
       if (!response.ok) {
@@ -49,7 +56,14 @@ export default function Home() {
   const handleReset = () => {
     setResult(null);
     setError(null);
-    setCurrentImage(null);
+
+    // Clean up object URL to prevent memory leaks
+    if (previewImage && previewImage.startsWith("blob:")) {
+      URL.revokeObjectURL(previewImage);
+    }
+
+    setPreviewImage(null);
+    setResizedImage(null);
     setIsClassifying(false);
   };
 
@@ -58,7 +72,7 @@ export default function Home() {
       <Header />
 
       <main className='flex-1 max-w-7xl mx-auto px-6 py-12 w-full'>
-        {!currentImage && (
+        {!previewImage && (
           <div className='text-center mb-12'>
             <h2 className='text-4xl font-bold text-slate-900 mb-4'>
               AI-Powered Quality Assessment
@@ -74,7 +88,7 @@ export default function Home() {
           <UploadSection
             onImageProcessed={handleImageProcessed}
             onError={setError}
-            preview={currentImage}
+            preview={previewImage} // Show original image
             isProcessing={isClassifying}
             onReset={handleReset}
           />
@@ -83,7 +97,7 @@ export default function Home() {
             result={result}
             isClassifying={isClassifying}
             error={error}
-            preview={currentImage}
+            preview={previewImage}
             onReset={handleReset}
           />
         </div>
