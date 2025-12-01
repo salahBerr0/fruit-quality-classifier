@@ -1,54 +1,50 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Zap, Shield, Camera } from "lucide-react";
 import { resizeImage, validateImageFile } from "@/lib/imageProcessor";
 
-interface ImageUploaderProps {
+interface UploadSectionProps {
   onImageProcessed: (base64Image: string, originalFile: File) => void;
   onError: (error: string) => void;
-  disabled?: boolean;
+  preview: string | null;
+  isProcessing: boolean;
+  onReset: () => void;
 }
 
-export function ImageUploader({
+export function UploadSection({
   onImageProcessed,
   onError,
-  disabled,
-}: ImageUploaderProps) {
+  preview,
+  isProcessing,
+  onReset,
+}: UploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
-    setIsProcessing(true);
-
     try {
-      // Validate file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         onError(validation.error!);
-        setIsProcessing(false);
         return;
       }
 
-      // Resize image
+      // Resize image for API (128x128)
       const resizedImage = await resizeImage(file);
+
+      // Pass the resized image to parent
       onImageProcessed(resizedImage, file);
     } catch (error) {
       onError(
         error instanceof Error ? error.message : "Failed to process image"
       );
-    } finally {
-      setIsProcessing(false);
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-
-    if (disabled || isProcessing) return;
-
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
@@ -59,53 +55,98 @@ export function ImageUploader({
   };
 
   return (
-    <div
-      className={`relative border-4 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
-        isDragging
-          ? "border-green-500 bg-green-50 scale-105"
-          : "border-orange-300 hover:border-orange-400 hover:bg-orange-50/30"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer group"}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        if (!disabled && !isProcessing) setIsDragging(true);
-      }}
-      onDragLeave={() => setIsDragging(false)}
-      onDrop={handleDrop}
-      onClick={() =>
-        !disabled && !isProcessing && fileInputRef.current?.click()
-      }
-    >
-      <input
-        ref={fileInputRef}
-        type='file'
-        accept='image/jpeg,image/png,image/jpg'
-        onChange={handleChange}
-        className='hidden'
-        disabled={disabled || isProcessing}
-      />
+    <div className='space-y-6'>
+      {!preview ? (
+        <>
+          <div
+            className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-200 ${
+              isDragging
+                ? "border-emerald-500 bg-emerald-50/50"
+                : "border-slate-300 hover:border-slate-400 bg-white"
+            } cursor-pointer group`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type='file'
+              accept='image/jpeg,image/png,image/jpg'
+              onChange={handleChange}
+              className='hidden'
+            />
 
-      {isProcessing ? (
-        <div className='flex flex-col items-center gap-4'>
-          <Loader2 className='h-20 w-20 animate-spin text-orange-500' />
-          <p className='text-lg text-gray-600'>Processing image...</p>
-        </div>
-      ) : (
-        <div className='flex flex-col items-center gap-4'>
-          <div className='relative'>
-            <div className='absolute inset-0 bg-gradient-to-r from-green-400 to-orange-400 rounded-full blur-xl opacity-50 group-hover:opacity-75 transition-opacity'></div>
-            <Upload className='relative h-20 w-20 text-orange-500 group-hover:scale-110 transition-transform' />
-          </div>
-          <div className='space-y-2'>
-            <p className='text-2xl font-bold text-gray-800'>
-              Drop your fruit image here
-            </p>
-            <p className='text-lg text-gray-600'>or click to browse</p>
-            <div className='flex gap-2 justify-center text-3xl mt-4'>
-              🍎 🍊 🍌 🍇 🍓 🍑
+            <div className='flex flex-col items-center gap-4 text-center'>
+              <div className='w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-emerald-50 transition-colors'>
+                <Upload className='w-8 h-8 text-slate-400 group-hover:text-emerald-600 transition-colors' />
+              </div>
+              <div>
+                <p className='text-lg font-medium text-slate-900 mb-1'>
+                  Drop your image here
+                </p>
+                <p className='text-sm text-slate-500'>
+                  or click to browse files
+                </p>
+              </div>
+              <div className='flex items-center gap-2 text-xs text-slate-400'>
+                <span>Supports: JPG, PNG</span>
+                <span>•</span>
+                <span>Max 10MB</span>
+              </div>
             </div>
-            <p className='text-sm text-gray-500 mt-4'>
-              Supports: JPEG, PNG (max 10MB)
-            </p>
+          </div>
+
+          <div className='grid grid-cols-3 gap-4'>
+            <div className='bg-white rounded-xl p-4 border border-slate-200'>
+              <Zap className='w-6 h-6 text-emerald-600 mb-2' />
+              <p className='text-xs font-medium text-slate-900'>
+                Fast Analysis
+              </p>
+              <p className='text-xs text-slate-500 mt-1'>Results in seconds</p>
+            </div>
+            <div className='bg-white rounded-xl p-4 border border-slate-200'>
+              <Shield className='w-6 h-6 text-emerald-600 mb-2' />
+              <p className='text-xs font-medium text-slate-900'>Secure</p>
+              <p className='text-xs text-slate-500 mt-1'>Data protected</p>
+            </div>
+            <div className='bg-white rounded-xl p-4 border border-slate-200'>
+              <Camera className='w-6 h-6 text-emerald-600 mb-2' />
+              <p className='text-xs font-medium text-slate-900'>
+                High Accuracy
+              </p>
+              <p className='text-xs text-slate-500 mt-1'>AI-powered</p>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className='bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm'>
+          <div className='aspect-square relative'>
+            <img
+              src={preview}
+              alt='Preview'
+              className='w-full h-full object-cover'
+            />
+            {isProcessing && (
+              <div className='absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center'>
+                <div className='text-center'>
+                  <div className='w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3'></div>
+                  <p className='text-white font-medium'>Analyzing image...</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className='p-4 border-t border-slate-200'>
+            <button
+              onClick={onReset}
+              disabled={isProcessing}
+              className='text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              ← Upload different image
+            </button>
           </div>
         </div>
       )}
